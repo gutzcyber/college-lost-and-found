@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VCACS | Lost & Found System</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        college: {
+                            // White & Sky Blue Theme
+                            900: '#0c4a6e', // Dark Sky Navy for contrast
+                            800: '#0284c7', // Sky 600
+                            700: '#0ea5e9', // Primary Sky 500
+                            600: '#38bdf8', // Light Sky 400
+                            accent: '#bae6fd' // Soft Sky 200 / White-ish accent
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .hide { display: none !important; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Toast Notifications */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { padding: 12px 20px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 6px rgba(0,0,0,0.1); animation: slideInRight 0.3s forwards; }
+        .toast.success { background-color: #10b981; }
+        .toast.error { background-color: #ef4444; }
+        .toast.info { background-color: #3b82f6; }
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+        /* Timeline styles */
+        .timeline-container { position: relative; padding-left: 30px; }
+        .timeline-container::before { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background: #e2e8f0; }
+        .timeline-step { position: relative; margin-bottom: 20px; }
+        .timeline-step::before { content: ''; position: absolute; left: -30px; top: 4px; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #cbd5e1; }
+        .timeline-step.active::before { border-color: #10b981; background: #10b981; }
+        .timeline-step.current::before { border-color: #0ea5e9; background: #0ea5e9; box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.2); }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col min-h-screen">
+
+    <!-- Navbar -->
+    <nav class="bg-college-900 text-white shadow-lg sticky top-0 z-50 border-b-4 border-college-accent">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="#home" class="flex-shrink-0 flex items-center gap-3">
+                        <i class="fas fa-graduation-cap text-2xl text-college-accent"></i>
+                        <span class="font-bold text-xl tracking-tight hidden sm:block" id="nav-college-name">VCACS</span>
+                    </a>
+                </div>
+                
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="#home" class="nav-link hover:text-college-accent px-3 py-2 rounded-md text-sm font-medium transition-colors">Home</a>
+                    <a href="#lost" class="nav-link hover:text-college-accent px-3 py-2 rounded-md text-sm font-medium transition-colors">Lost Items</a>
+                    <a href="#found" class="nav-link hover:text-college-accent px-3 py-2 rounded-md text-sm font-medium transition-colors">Found Items</a>
+                    <a href="#report" class="bg-white text-college-900 hover:bg-college-accent px-4 py-2 rounded-md text-sm font-bold shadow transition-colors">Report Item</a>
+                    <a href="#my-reports" class="nav-link hover:text-college-accent px-3 py-2 rounded-md text-sm font-medium transition-colors">My Reports</a>
+                    <a href="#how-it-works" class="nav-link hover:text-college-accent px-3 py-2 rounded-md text-sm font-medium transition-colors">How It Works</a>
+                    <a href="#admin-login" id="nav-admin-link" class="nav-link hover:text-white px-3 py-2 rounded-md text-sm font-medium text-sky-200 border border-college-700 hover:bg-college-800 transition-colors">Admin</a>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <div class="flex items-center md:hidden">
+                    <button id="mobile-menu-btn" class="text-sky-200 hover:text-white focus:outline-none">
+                        <i class="fas fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Menu Panel -->
+        <div id="mobile-menu" class="hidden md:hidden bg-college-800 pb-3 pt-2 border-t border-college-700">
+            <a href="#home" class="block px-4 py-2 text-base font-medium text-white hover:bg-college-700 mobile-link">Home</a>
+            <a href="#lost" class="block px-4 py-2 text-base font-medium text-white hover:bg-college-700 mobile-link">Lost Items</a>
+            <a href="#found" class="block px-4 py-2 text-base font-medium text-white hover:bg-college-700 mobile-link">Found Items</a>
+            <a href="#report" class="block px-4 py-2 text-base font-medium text-college-accent hover:bg-college-700 mobile-link">Report Item</a>
+            <a href="#my-reports" class="block px-4 py-2 text-base font-medium text-white hover:bg-college-700 mobile-link">My Reports</a>
+            <a href="#how-it-works" class="block px-4 py-2 text-base font-medium text-white hover:bg-college-700 mobile-link">How It Works</a>
+            <a href="#admin-login" id="mobile-admin-link" class="block px-4 py-2 text-base font-medium text-sky-200 hover:bg-college-700 mobile-link">Admin Dashboard</a>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTAINER FOR SPA ROUTING -->
+    <main class="flex-grow flex flex-col">
+        
+        <!-- ============================================== -->
+        <!-- HOME VIEW                                      -->
+        <!-- ============================================== -->
+        <section id="view-home" class="page-view flex-grow">
+            <!-- Hero -->
+            <div class="bg-gradient-to-br from-college-900 to-college-700 text-white py-20 px-4 text-center relative overflow-hidden">
+                <!-- Decorative background elements -->
+                <div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" stroke-width="1"/>
+                            </pattern>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#grid)" />
+                    </svg>
+                </div>
+                
+                <h1 class="text-4xl md:text-5xl font-extrabold mb-6 tracking-tight relative z-10">Lost Something? Found Something?</h1>
+                <p class="text-xl text-sky-100 max-w-2xl mx-auto mb-10 relative z-10">Help reunite lost items with their rightful owners across the campus. A secure, fast, and reliable college community platform.</p>
+                <div class="flex flex-col sm:flex-row justify-center gap-4 relative z-10">
+                    <a href="#report" class="bg-white hover:bg-college-accent text-college-900 font-bold py-3 px-8 rounded-lg shadow-lg transform transition hover:-translate-y-1">
+                        <i class="fas fa-plus-circle mr-2"></i> Report an Item
+                    </a>
+                    <a href="#lost" class="bg-college-900 hover:bg-college-800 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition hover:-translate-y-1 border border-college-700">
+                        <i class="fas fa-search mr-2"></i> Browse Items
+                    </a>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="max-w-7xl mx-auto px-4 -mt-10 relative z-10">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                    <div class="bg-white rounded-xl shadow-md p-6 text-center border-b-4 border-college-accent">
+                        <div class="text-3xl text-college-700 mb-2"><i class="fas fa-boxes"></i></div>
+                        <div class="text-3xl font-bold text-slate-800" id="stat-total">0</div>
+                        <div class="text-sm text-slate-500 font-medium uppercase">Total Reports</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-md p-6 text-center border-b-4 border-red-500">
+                        <div class="text-3xl text-red-500 mb-2"><i class="fas fa-search-location"></i></div>
+                        <div class="text-3xl font-bold text-slate-800" id="stat-lost">0</div>
+                        <div class="text-sm text-slate-500 font-medium uppercase">Lost Items</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-md p-6 text-center border-b-4 border-green-500">
+                        <div class="text-3xl text-green-500 mb-2"><i class="fas fa-hand-holding-heart"></i></div>
+                        <div class="text-3xl font-bold text-slate-800" id="stat-found">0</div>
+                        <div class="text-sm text-slate-500 font-medium uppercase">Found Items</div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-md p-6 text-center border-b-4 border-blue-500">
+                        <div class="text-3xl text-blue-500 mb-2"><i class="fas fa-check-circle"></i></div>
+                        <div class="text-3xl font-bold text-slate-800" id="stat-returned">0</div>
+                        <div class="text-sm text-slate-500 font-medium uppercase">Items Returned</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Items -->
+            <div class="max-w-7xl mx-auto px-4 py-16">
+                <div class="flex justify-between items-end mb-8 border-b border-slate-200 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800 border-l-4 border-college-700 pl-3">Recently Reported</h2>
+                        <p class="text-slate-500 mt-1 pl-4">Latest items added to the system.</p>
+                    </div>
+                    <a href="#lost" class="text-college-700 hover:text-college-900 font-medium">View All <i class="fas fa-arrow-right ml-1"></i></a>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" id="recent-items-container">
+                    <!-- Cards injected via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- BROWSE ITEMS VIEW (Lost & Found logic shared)  -->
+        <!-- ============================================== -->
+        <section id="view-browse" class="page-view flex-grow py-10 hide">
+            <div class="max-w-7xl mx-auto px-4">
+                <h1 class="text-3xl font-bold text-slate-800 mb-2 border-l-4 border-college-700 pl-3" id="browse-title">Browse Items</h1>
+                <p class="text-slate-500 mb-8 pl-4" id="browse-subtitle">Search and filter items reported in the system.</p>
+
+                <!-- Filters -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 flex flex-col md:flex-row gap-4">
+                    <div class="flex-grow">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-3.5 text-slate-400"></i>
+                            <input type="text" id="search-input" placeholder="Search by item name, description, or location..." class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 focus:border-college-600 outline-none transition">
+                        </div>
+                    </div>
+                    <div class="w-full md:w-48">
+                        <select id="category-filter" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none bg-white">
+                            <option value="all">All Categories</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Documents">Documents</option>
+                            <option value="ID Cards">ID Cards</option>
+                            <option value="Wallet/Purse">Wallet/Purse</option>
+                            <option value="Keys">Keys</option>
+                            <option value="Books">Books</option>
+                            <option value="Bags">Bags</option>
+                            <option value="Accessories">Accessories</option>
+                            <option value="Clothing">Clothing</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="w-full md:w-48">
+                        <select id="status-filter" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none bg-white">
+                            <option value="all">All Statuses</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Under Review">Under Review</option>
+                            <option value="Verified">Verified</option>
+                            <option value="Claimed">Claimed</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Results Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="browse-results">
+                    <!-- Cards injected via JS -->
+                </div>
+                
+                <!-- Empty State -->
+                <div id="browse-empty" class="hidden text-center py-16 bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <i class="fas fa-box-open text-6xl text-slate-300 mb-4"></i>
+                    <h3 class="text-xl font-medium text-slate-700">No matching items found.</h3>
+                    <p class="text-slate-500 mt-2">Try adjusting your search or filters.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- REPORT ITEM VIEW                               -->
+        <!-- ============================================== -->
+        <section id="view-report" class="page-view flex-grow py-10 hide">
+            <div class="max-w-3xl mx-auto px-4">
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-200">
+                    <div class="bg-college-900 text-white py-6 px-8 text-center border-b-4 border-college-accent">
+                        <h1 class="text-2xl font-bold">Report an Item</h1>
+                        <p class="text-sky-100 mt-1">Please provide accurate details to help with identification.</p>
+                    </div>
+                    
+                    <form id="report-form" class="p-8">
+                        <!-- Report Type Selection -->
+                        <div class="mb-8">
+                            <label class="block text-sm font-semibold text-slate-700 mb-3">What are you reporting? <span class="text-red-500">*</span></label>
+                            <div class="flex gap-4">
+                                <label class="flex-1 cursor-pointer">
+                                    <input type="radio" name="reportType" value="lost" class="peer hidden" required>
+                                    <div class="p-4 border-2 border-slate-200 rounded-xl text-center peer-checked:border-red-500 peer-checked:bg-red-50 transition">
+                                        <i class="fas fa-search-location text-2xl mb-2 text-slate-400 peer-checked:text-red-500"></i>
+                                        <div class="font-medium text-slate-700">I Lost an Item</div>
+                                    </div>
+                                </label>
+                                <label class="flex-1 cursor-pointer">
+                                    <input type="radio" name="reportType" value="found" class="peer hidden" required>
+                                    <div class="p-4 border-2 border-slate-200 rounded-xl text-center peer-checked:border-green-500 peer-checked:bg-green-50 transition">
+                                        <i class="fas fa-hand-holding-heart text-2xl mb-2 text-slate-400 peer-checked:text-green-500"></i>
+                                        <div class="font-medium text-slate-700">I Found an Item</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Item Details -->
+                        <h3 class="text-lg font-bold text-college-800 border-b border-slate-200 pb-2 mb-4"><i class="fas fa-info-circle mr-2"></i>Item Details</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Item Name <span class="text-red-500">*</span></label>
+                                <input type="text" id="report-name" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none" placeholder="e.g., Brown Leather Wallet">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Category <span class="text-red-500">*</span></label>
+                                <select id="report-category" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none">
+                                    <option value="" disabled selected>Select category...</option>
+                                    <option value="Electronics">Electronics</option>
+                                    <option value="Documents">Documents</option>
+                                    <option value="ID Cards">ID Cards</option>
+                                    <option value="Wallet/Purse">Wallet/Purse</option>
+                                    <option value="Keys">Keys</option>
+                                    <option value="Books">Books</option>
+                                    <option value="Bags">Bags</option>
+                                    <option value="Accessories">Accessories</option>
+                                    <option value="Clothing">Clothing</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Description & Unique Details <span class="text-red-500">*</span></label>
+                            <textarea id="report-desc" required rows="3" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none" placeholder="Provide specific details (brand, color, marks, contents) to help identify the item."></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Location <span class="text-red-500">*</span></label>
+                                <input type="text" id="report-location" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none" placeholder="e.g., Main Library">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Date <span class="text-red-500">*</span></label>
+                                <input type="date" id="report-date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Time</label>
+                                <input type="time" id="report-time" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-8">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Upload Image (Optional)</label>
+                            <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-lg hover:border-college-600 transition bg-slate-50 relative">
+                                <div class="space-y-1 text-center" id="image-upload-prompt">
+                                    <i class="fas fa-image text-3xl text-slate-400 mb-2"></i>
+                                    <div class="flex text-sm text-slate-600 justify-center">
+                                        <label for="report-image" class="relative cursor-pointer bg-white rounded-md font-medium text-college-700 hover:text-college-600 focus-within:outline-none">
+                                            <span>Upload a file</span>
+                                            <input id="report-image" name="file-upload" type="file" class="sr-only" accept="image/*">
+                                        </label>
+                                        <p class="pl-1">or drag and drop</p>
+                                    </div>
+                                    <p class="text-xs text-slate-500">PNG, JPG up to 2MB</p>
+                                </div>
+                                <div id="image-preview-container" class="hidden absolute inset-0 bg-white rounded-lg p-2 flex items-center justify-between">
+                                    <img id="image-preview" src="" alt="Preview" class="h-full object-contain max-w-[80%] rounded">
+                                    <button type="button" id="remove-image" class="text-red-500 hover:text-red-700 font-bold p-2"><i class="fas fa-times"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Details -->
+                        <h3 class="text-lg font-bold text-college-800 border-b border-slate-200 pb-2 mb-4"><i class="fas fa-address-card mr-2"></i>Your Contact Details</h3>
+                        <p class="text-xs text-slate-500 mb-4"><i class="fas fa-shield-alt text-green-600"></i> Your details are kept private and only used by the admin/system for verification.</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Full Name <span class="text-red-500">*</span></label>
+                                <input type="text" id="reporter-name" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Student/Staff ID <span class="text-red-500">*</span></label>
+                                <input type="text" id="reporter-id" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Email <span class="text-red-500">*</span></label>
+                                <input type="email" id="reporter-email" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Phone Number <span class="text-red-500">*</span></label>
+                                <input type="tel" id="reporter-phone" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-4 border-t border-slate-200">
+                            <button type="submit" class="bg-college-800 hover:bg-college-900 text-white font-bold py-3 px-8 rounded-lg shadow transition w-full md:w-auto border-b-4 border-college-900 active:border-b-0 active:translate-y-1">
+                                Submit Report
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- MY REPORTS VIEW                                -->
+        <!-- ============================================== -->
+        <section id="view-my-reports" class="page-view flex-grow py-10 hide">
+            <div class="max-w-4xl mx-auto px-4">
+                <div class="text-center mb-10">
+                    <h1 class="text-3xl font-bold text-slate-800">Track Your Reports</h1>
+                    <p class="text-slate-500 mt-2">Enter your Report ID and Email to check the status.</p>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200 mb-8 max-w-lg mx-auto">
+                    <form id="track-form" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Report ID</label>
+                            <input type="text" id="track-id" required placeholder="e.g., LF-2026-001" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none uppercase">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                            <input type="email" id="track-email" required placeholder="Email used during report" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none">
+                        </div>
+                        <button type="submit" class="w-full bg-college-700 hover:bg-college-800 text-white font-bold py-2 px-4 rounded-lg transition shadow">Check Status</button>
+                    </form>
+                </div>
+
+                <!-- Status Result Container -->
+                <div id="track-result" class="hidden bg-white rounded-xl shadow-md border border-slate-200 p-6">
+                    <div class="flex justify-between items-start border-b border-slate-200 pb-4 mb-6">
+                        <div>
+                            <h2 class="text-xl font-bold text-college-800" id="tr-item-name">Item Name</h2>
+                            <p class="text-sm text-slate-500">Report ID: <span class="font-mono text-slate-800 font-bold" id="tr-id">LF-XXX</span></p>
+                        </div>
+                        <span id="tr-badge" class="px-3 py-1 rounded-full text-sm font-bold bg-blue-100 text-blue-800 border border-blue-200">Status</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="font-bold text-slate-700 mb-4 border-l-4 border-college-accent pl-2">Report Details</h3>
+                            <ul class="space-y-3 text-sm text-slate-600 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                <li><i class="fas fa-tag w-5 text-college-700"></i> Type: <span id="tr-type" class="font-medium capitalize"></span></li>
+                                <li><i class="fas fa-folder w-5 text-college-700"></i> Category: <span id="tr-category" class="font-medium"></span></li>
+                                <li><i class="fas fa-calendar w-5 text-college-700"></i> Date: <span id="tr-date" class="font-medium"></span></li>
+                                <li><i class="fas fa-map-marker-alt w-5 text-college-700"></i> Location: <span id="tr-location" class="font-medium"></span></li>
+                            </ul>
+                        </div>
+                        
+                        <div>
+                            <h3 class="font-bold text-slate-700 mb-4 border-l-4 border-college-accent pl-2">Status Timeline</h3>
+                            <div class="timeline-container" id="tr-timeline">
+                                <!-- Generated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- HOW IT WORKS VIEW                              -->
+        <!-- ============================================== -->
+        <section id="view-how-it-works" class="page-view flex-grow bg-white py-16 hide border-t border-slate-200">
+            <div class="max-w-5xl mx-auto px-4">
+                <h1 class="text-3xl font-bold text-center text-slate-800 mb-16">How The System Works</h1>
+                
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-16 relative">
+                    <!-- Connecting line for desktop -->
+                    <div class="hidden md:block absolute top-10 left-1/8 right-1/8 h-0.5 bg-college-100 w-3/4 mx-auto z-0"></div>
+                    
+                    <div class="text-center group relative z-10 bg-white">
+                        <div class="w-20 h-20 mx-auto bg-slate-50 border-2 border-college-100 rounded-full flex items-center justify-center mb-4 group-hover:border-college-700 group-hover:bg-sky-50 transition duration-300">
+                            <i class="fas fa-edit text-3xl text-college-700 group-hover:scale-110 transition"></i>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2 text-slate-800">1. Report</h3>
+                        <p class="text-sm text-slate-500">Submit a detailed report of the item you lost or found on campus.</p>
+                    </div>
+                    <div class="text-center group relative z-10 bg-white">
+                        <div class="w-20 h-20 mx-auto bg-slate-50 border-2 border-college-100 rounded-full flex items-center justify-center mb-4 group-hover:border-college-700 group-hover:bg-sky-50 transition duration-300">
+                            <i class="fas fa-search text-3xl text-college-700 group-hover:scale-110 transition"></i>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2 text-slate-800">2. Search</h3>
+                        <p class="text-sm text-slate-500">Browse the listings using filters to find matching items.</p>
+                    </div>
+                    <div class="text-center group relative z-10 bg-white">
+                        <div class="w-20 h-20 mx-auto bg-slate-50 border-2 border-college-100 rounded-full flex items-center justify-center mb-4 group-hover:border-college-700 group-hover:bg-sky-50 transition duration-300">
+                            <i class="fas fa-hand-paper text-3xl text-college-700 group-hover:scale-110 transition"></i>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2 text-slate-800">3. Claim</h3>
+                        <p class="text-sm text-slate-500">If you see your item, submit a secure claim with proof of ownership.</p>
+                    </div>
+                    <div class="text-center group relative z-10 bg-white">
+                        <div class="w-20 h-20 mx-auto bg-slate-50 border-2 border-college-100 rounded-full flex items-center justify-center mb-4 group-hover:border-college-700 group-hover:bg-sky-50 transition duration-300">
+                            <i class="fas fa-handshake text-3xl text-college-700 group-hover:scale-110 transition"></i>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2 text-slate-800">4. Verify & Collect</h3>
+                        <p class="text-sm text-slate-500">Admin verifies the claim and arranges for the safe return of the item.</p>
+                    </div>
+                </div>
+
+                <div class="bg-yellow-50 border-l-4 border-college-accent p-6 rounded-r-lg shadow-sm">
+                    <h3 class="font-bold text-yellow-900 mb-2"><i class="fas fa-exclamation-triangle text-college-accent mr-2"></i>System Rules & Guidelines</h3>
+                    <ul class="list-disc pl-8 space-y-1 text-yellow-800 text-sm">
+                        <li>Do not submit false reports or spam the system.</li>
+                        <li>Do not share sensitive personal information publicly in item descriptions.</li>
+                        <li>Only claim items that genuinely belong to you. False claims may result in disciplinary action.</li>
+                        <li>All high-value items must be handed over to the central Lost & Found office for verification.</li>
+                        <li>Items unclaimed after 90 days may be donated or discarded per college policy.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- ADMIN LOGIN VIEW                               -->
+        <!-- ============================================== -->
+        <section id="view-admin-login" class="page-view flex-grow flex items-center justify-center py-10 hide">
+            <div class="bg-white p-8 rounded-xl shadow-lg border border-slate-200 w-full max-w-md relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-college-900 via-college-700 to-college-accent"></div>
+                
+                <div class="text-center mb-8 mt-2">
+                    <div class="w-16 h-16 bg-sky-50 text-college-700 rounded-full flex items-center justify-center mx-auto mb-4 border border-sky-100">
+                        <i class="fas fa-user-shield text-3xl"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-800">Admin Access</h2>
+                    <p class="text-sm text-slate-500 mt-1">Authorized personnel only.</p>
+                    
+                    <!-- Security Note -->
+                    <div class="mt-4 p-3 bg-slate-50 rounded text-xs text-slate-600 border border-slate-200 text-left flex gap-2 items-start">
+                        <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+                        <span>This project uses frontend-only demo authentication for GitHub Pages. Demo credentials:<br>
+                        User: <strong>admin</strong> | Pass: <strong>admin123</strong></span>
+                    </div>
+                </div>
+                
+                <form id="login-form">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Username</label>
+                        <input type="text" id="admin-user" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-700 outline-none bg-slate-50">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                        <input type="password" id="admin-pass" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-700 outline-none bg-slate-50">
+                    </div>
+                    <button type="submit" class="w-full bg-college-800 hover:bg-college-900 text-white font-bold py-2 px-4 rounded-lg transition shadow-md">
+                        Secure Login
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- ADMIN DASHBOARD VIEW                           -->
+        <!-- ============================================== -->
+        <section id="view-admin-dashboard" class="page-view flex-grow bg-slate-50 hide">
+            <div class="flex flex-col md:flex-row min-h-[calc(100vh-64px)]">
+                
+                <!-- Admin Sidebar -->
+                <aside class="w-full md:w-64 bg-slate-900 text-white flex-shrink-0">
+                    <div class="p-4 border-b border-slate-800 bg-slate-950">
+                        <div class="font-bold text-lg text-white">Admin Panel</div>
+                        <div class="text-xs text-college-accent">Logged in as Administrator</div>
+                    </div>
+                    <nav class="p-2 space-y-1">
+                        <button class="admin-tab-btn active w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition bg-college-800 text-white" data-target="admin-overview">
+                            <i class="fas fa-chart-pie w-6"></i> Overview
+                        </button>
+                        <button class="admin-tab-btn w-full text-left px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition" data-target="admin-reports">
+                            <i class="fas fa-list w-6"></i> Manage Reports
+                        </button>
+                        <button class="admin-tab-btn w-full text-left px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition" data-target="admin-claims">
+                            <i class="fas fa-hand-paper w-6"></i> Manage Claims
+                        </button>
+                        <button class="admin-tab-btn w-full text-left px-4 py-3 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition" data-target="admin-settings">
+                            <i class="fas fa-cog w-6"></i> Settings
+                        </button>
+                        <div class="pt-4 mt-4 border-t border-slate-800">
+                            <button id="admin-logout-btn" class="w-full text-left px-4 py-2 text-sm font-medium text-red-400 hover:bg-slate-800 hover:text-red-300 rounded-lg transition">
+                                <i class="fas fa-sign-out-alt w-6"></i> Logout
+                            </button>
+                        </div>
+                    </nav>
+                </aside>
+
+                <!-- Admin Content Area -->
+                <div class="flex-grow p-4 md:p-8 overflow-x-hidden">
+                    
+                    <!-- TAB: OVERVIEW -->
+                    <div id="admin-overview" class="admin-tab-content fade-in">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-6">Dashboard Overview</h2>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 border-l-4 border-l-blue-500">
+                                <div class="text-sm text-slate-500 font-medium">Total Reports</div>
+                                <div class="text-2xl font-bold text-slate-800" id="ad-stat-total">0</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 border-l-4 border-l-college-accent">
+                                <div class="text-sm text-slate-500 font-medium">Pending Review</div>
+                                <div class="text-2xl font-bold text-slate-800" id="ad-stat-pending">0</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 border-l-4 border-l-purple-500">
+                                <div class="text-sm text-slate-500 font-medium">Active Claims</div>
+                                <div class="text-2xl font-bold text-slate-800" id="ad-stat-claims">0</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 border-l-4 border-l-green-500">
+                                <div class="text-sm text-slate-500 font-medium">Successfully Returned</div>
+                                <div class="text-2xl font-bold text-slate-800" id="ad-stat-returned">0</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Simple Chart Visualization (CSS based) -->
+                        <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200">
+                            <h3 class="font-bold text-slate-700 mb-4">Report Activity (Visual)</h3>
+                            <div class="flex h-4 bg-slate-100 rounded-full overflow-hidden" id="visual-bar">
+                                <!-- Bars injected via JS -->
+                            </div>
+                            <div class="flex justify-between text-xs text-slate-500 mt-2" id="visual-labels">
+                                <!-- Labels injected via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: MANAGE REPORTS -->
+                    <div id="admin-reports" class="admin-tab-content hide fade-in">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-slate-800">Manage Reports</h2>
+                            <button onclick="clearAllData()" class="text-xs bg-red-50 border border-red-200 text-red-600 px-3 py-1.5 rounded hover:bg-red-100 transition"><i class="fas fa-trash-alt mr-1"></i> Reset All Data</button>
+                        </div>
+                        
+                        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full whitespace-nowrap text-left text-sm text-slate-600">
+                                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-medium">
+                                        <tr>
+                                            <th class="px-6 py-3">ID / Date</th>
+                                            <th class="px-6 py-3">Item Details</th>
+                                            <th class="px-6 py-3">Type</th>
+                                            <th class="px-6 py-3">Status</th>
+                                            <th class="px-6 py-3 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-reports-tbody" class="divide-y divide-slate-100">
+                                        <!-- Rows injected via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: MANAGE CLAIMS -->
+                    <div id="admin-claims" class="admin-tab-content hide fade-in">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-6">Manage Claims</h2>
+                        
+                        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full whitespace-nowrap text-left text-sm text-slate-600">
+                                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-medium">
+                                        <tr>
+                                            <th class="px-6 py-3">Claim ID</th>
+                                            <th class="px-6 py-3">Target Report</th>
+                                            <th class="px-6 py-3">Claimant</th>
+                                            <th class="px-6 py-3">Status</th>
+                                            <th class="px-6 py-3 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-claims-tbody" class="divide-y divide-slate-100">
+                                        <!-- Rows injected via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: SETTINGS -->
+                    <div id="admin-settings" class="admin-tab-content hide fade-in">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-6">System Settings</h2>
+                        
+                        <div class="bg-white p-6 rounded-lg shadow-sm border border-slate-200 max-w-2xl">
+                            <form id="settings-form">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">College Name</label>
+                                        <input type="text" id="set-college-name" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Contact Email</label>
+                                        <input type="email" id="set-email" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Office Location</label>
+                                        <input type="text" id="set-location" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                                        <input type="text" id="set-phone" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none">
+                                    </div>
+                                </div>
+                                
+                                <div class="border-t border-slate-200 pt-6 mb-6">
+                                    <h3 class="font-bold text-slate-700 mb-3">Toggles</h3>
+                                    <label class="flex items-center gap-3 cursor-pointer mb-3">
+                                        <input type="checkbox" id="set-allow-reports" class="w-5 h-5 text-college-700 rounded border-slate-300 focus:ring-college-700">
+                                        <span class="text-sm text-slate-700">Allow new public reports</span>
+                                    </label>
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" id="set-allow-claims" class="w-5 h-5 text-college-700 rounded border-slate-300 focus:ring-college-700">
+                                        <span class="text-sm text-slate-700">Allow users to submit claims</span>
+                                    </label>
+                                </div>
+                                
+                                <button type="submit" class="bg-college-800 hover:bg-college-900 text-white font-bold py-2 px-6 rounded-lg transition shadow">
+                                    Save Settings
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ============================================== -->
+    <!-- MODALS & OVERLAYS                              -->
+    <!-- ============================================== -->
+    
+    <!-- Item Details Modal -->
+    <div id="details-modal" class="fixed inset-0 bg-slate-900/70 z-[100] hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto transform scale-95 transition-transform duration-300" id="details-modal-content">
+            <div class="relative">
+                <button onclick="closeModal('details-modal')" class="absolute top-4 right-4 text-white bg-black/40 hover:bg-black/60 rounded-full w-8 h-8 flex items-center justify-center transition z-10"><i class="fas fa-times"></i></button>
+                <div class="h-64 bg-slate-100 w-full relative border-b border-slate-200" id="modal-image-container">
+                    <img id="modal-image" src="" alt="Item Image" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
+                    <div class="absolute bottom-4 left-4 text-white">
+                        <span id="modal-badge" class="px-2 py-1 text-xs font-bold rounded uppercase mr-2 tracking-wider shadow-sm">Type</span>
+                        <span id="modal-status" class="px-2 py-1 text-xs font-bold bg-white/20 backdrop-blur-md border border-white/30 rounded uppercase tracking-wider shadow-sm">Status</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-6 md:p-8">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 id="modal-title" class="text-2xl font-bold text-slate-800 mb-1">Item Name</h2>
+                        <p class="text-sm font-mono text-college-700 font-bold" id="modal-id">ID</p>
+                    </div>
+                    <div class="text-right text-sm text-slate-500 bg-slate-50 px-3 py-1.5 rounded border border-slate-200">
+                        <div><i class="fas fa-folder text-college-600 mr-1"></i> <span id="modal-category">Category</span></div>
+                    </div>
+                </div>
+                
+                <p id="modal-desc" class="text-slate-600 mb-6 text-sm leading-relaxed whitespace-pre-wrap">Description goes here.</p>
+                
+                <div class="grid grid-cols-2 gap-4 mb-8 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                    <div>
+                        <div class="text-xs text-slate-400 uppercase font-bold mb-1">Date</div>
+                        <div class="text-sm font-medium text-slate-700" id="modal-date">Date</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400 uppercase font-bold mb-1">Location</div>
+                        <div class="text-sm font-medium text-slate-700" id="modal-loc">Location</div>
+                    </div>
+                    <div class="col-span-2 mt-2 pt-3 border-t border-slate-200">
+                        <div class="text-xs text-slate-400 uppercase font-bold mb-1">Contact Details</div>
+                        <div class="text-sm font-medium text-slate-700 flex items-center gap-2">
+                            <i class="fas fa-info-circle text-blue-500"></i> Contact the Lost & Found Dept referencing this Report ID.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 justify-end border-t border-slate-200 pt-5">
+                    <button onclick="closeModal('details-modal')" class="px-5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition border border-transparent hover:border-slate-200">Close</button>
+                    <button id="modal-claim-btn" onclick="openClaimForm()" class="px-5 py-2 text-sm font-bold bg-green-600 hover:bg-green-700 text-white rounded-lg transition shadow-md">Claim This Item</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Claim Form Modal -->
+    <div id="claim-modal" class="fixed inset-0 bg-slate-900/70 z-[110] hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 md:p-8 transform scale-95 transition-transform duration-300" id="claim-modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-slate-800">Submit Claim</h2>
+                <button onclick="closeModal('claim-modal')" class="text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-full w-8 h-8 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="bg-yellow-50 text-yellow-800 text-xs p-3 rounded-lg mb-6 border border-yellow-100">
+                You are claiming: <strong id="claim-target-name">Item Name</strong> (<span id="claim-target-id">ID</span>)
+            </div>
+
+            <form id="claim-form">
+                <input type="hidden" id="claim-report-id">
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1 uppercase">Full Name *</label>
+                        <input type="text" id="claim-name" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1 uppercase">Student/Staff ID *</label>
+                        <input type="text" id="claim-studentid" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none text-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1 uppercase">Email *</label>
+                            <input type="email" id="claim-email" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1 uppercase">Phone *</label>
+                            <input type="tel" id="claim-phone" required class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1 uppercase">Proof of Ownership *</label>
+                        <textarea id="claim-proof" required rows="3" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-college-600 outline-none text-sm" placeholder="Provide specific details only the owner would know (passwords, serial numbers, hidden marks)."></textarea>
+                    </div>
+                </div>
+                <div class="flex gap-3 justify-end pt-2">
+                    <button type="button" onclick="closeModal('claim-modal')" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition border border-transparent hover:border-slate-200">Cancel</button>
+                    <button type="submit" class="px-5 py-2 text-sm font-bold bg-college-800 hover:bg-college-900 text-white rounded-lg transition shadow-md">Submit Claim</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-10 mt-auto border-t-[6px] border-college-800">
+        <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+            <div>
+                <h3 class="text-white font-bold text-lg mb-4 flex items-center gap-2">
+                    <i class="fas fa-graduation-cap text-college-accent"></i> <span id="footer-college-name">VCACS</span>
+                </h3>
+                <p class="font-medium text-slate-300">Lost & Found Department</p>
+                <p class="mt-2 text-slate-500 leading-relaxed">Helping the college community recover lost items efficiently and securely within the campus.</p>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4 uppercase text-xs tracking-wider">Quick Links</h4>
+                <ul class="space-y-2">
+                    <li><a href="#report" class="hover:text-college-accent transition flex items-center gap-2"><i class="fas fa-angle-right text-xs"></i> Report an Item</a></li>
+                    <li><a href="#how-it-works" class="hover:text-college-accent transition flex items-center gap-2"><i class="fas fa-angle-right text-xs"></i> How it Works</a></li>
+                    <li><a href="#my-reports" class="hover:text-college-accent transition flex items-center gap-2"><i class="fas fa-angle-right text-xs"></i> Check Status</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-bold mb-4 uppercase text-xs tracking-wider">Contact Info</h4>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-3"><i class="fas fa-map-marker-alt mt-1 text-college-accent"></i> <span id="footer-location">Student Affairs Office, Room 101</span></li>
+                    <li class="flex items-center gap-3"><i class="fas fa-envelope text-college-accent"></i> <span id="footer-email">lostandfound@vcacs.ac.in</span></li>
+                    <li class="flex items-center gap-3"><i class="fas fa-phone text-college-accent"></i> <span id="footer-phone">+91 7888076565</span></li>
+                </ul>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 mt-10 pt-6 border-t border-slate-800/50 text-center text-xs flex flex-col md:flex-row justify-between items-center gap-4">
+            <p>&copy; 2026 <span id="copyright-name">Vishwakarma College of Arts, Commerce & Science</span>. All rights reserved.</p>
+            <p class="text-slate-600">Demo Project for GitHub Pages</p>
+        </div>
+    </footer>
+
+    <!-- ============================================== -->
+    <!-- JAVASCRIPT LOGIC                               -->
+    <!-- ============================================== -->
+    <script>
+        /**
+         * LOST & FOUND SYSTEM 
+         * Frontend-only SPA using localStorage for persistence.
+         */
+
+        // --- 1. CONFIGURATION & STATE ---
+        
+        const DEFAULT_SETTINGS = {
+            collegeName: "Vishwakarma College of Arts, Commerce & Science",
+            email: "info@vcacs.ac.in",
+            location: "Sr.No. 3/6 VIIT Campus, Laxmi Nagar, Kondhwa(BK) Pune",
+            phone: "+91-7888076565",
+            allowReports: true,
+            allowClaims: true
+        };
+
+        const INITIAL_DATA = [
+            {
+                id: "LF-2026-001", type: "lost", name: "Brown Leather Wallet", category: "Wallet/Purse",
+                date: "2026-10-02", location: "College Library - 2nd Floor", status: "Under Review",
+                desc: "Contains my student ID, some cash, and a debit card. Brand is Tommy Hilfiger.",
+                reporterName: "Rahul Sharma", reporterId: "STU1045", email: "rahul@test.com", phone: "9876543210",
+                image: "./a.jpg" // Renamed locally by user
+            },
+            {
+                id: "LF-2026-002", type: "found", name: "Samsung Galaxy Phone", category: "Electronics", 
+                date: "2026-10-04", location: "Canteen near Table 5", status: "Verified",
+                desc: "Black cover, has a crack on the screen protector. Wallpaper is a dog.",
+                reporterName: "Priya Singh", reporterId: "STU2201", email: "priya@test.com", phone: "9876543211",
+                image: "./b.jpg" // Renamed locally by user
+            },
+            {
+                id: "LF-2026-003", type: "lost", name: "Blue Backpack", category: "Bags", 
+                date: "2026-10-05", location: "Computer Lab 3", status: "Pending",
+                desc: "Blue backpack with yellow zipper. Contains a notebook and a water bottle.",
+                reporterName: "Amit Kumar", reporterId: "STU3055", email: "amit@test.com", phone: "9876543212",
+                image: "./c.jpg" // Renamed locally by user
+            },
+            {
+                id: "LF-2026-004", type: "found", name: "Keys with Keychain", category: "Keys", 
+                date: "2026-10-06", location: "Main Gate Parking", status: "Returned",
+                desc: "Keys with a square cartoon keychain attached.",
+                reporterName: "Security Guard", reporterId: "STF001", email: "security@test.com", phone: "9876543213",
+                image: "./d.jpg" // Renamed locally by user
+            }
+        ];
+
+        let state = {
+            reports: [],
+            claims: [],
+            settings: {},
+            isAdmin: false,
+            currentView: 'home',
+            browseType: 'all', // all, lost, found
+            imageUploadData: null
+        };
+
+        // --- 2. STORAGE & INITIALIZATION ---
+
+        function initData() {
+            // Load Settings
+            const savedSettings = localStorage.getItem('lf_settings');
+            state.settings = savedSettings ? JSON.parse(savedSettings) : DEFAULT_SETTINGS;
+            
+            // Force reset demo data once to ensure new a/b/c/d images load correctly
+            if (localStorage.getItem('lf_demo_version') !== 'v5') {
+                localStorage.removeItem('lf_reports');
+                localStorage.setItem('lf_demo_version', 'v5');
+            }
+
+            // Load Reports
+            const savedReports = localStorage.getItem('lf_reports');
+            if (savedReports) {
+                state.reports = JSON.parse(savedReports);
+            } else {
+                state.reports = [...INITIAL_DATA];
+                localStorage.setItem('lf_reports', JSON.stringify(state.reports));
+            }
+
+            // Load Claims
+            const savedClaims = localStorage.getItem('lf_claims');
+            state.claims = savedClaims ? JSON.parse(savedClaims) : [];
+
+            // Load Admin Session
+            state.isAdmin = localStorage.getItem('lf_admin_session') === 'true';
+
+            applySettingsToUI();
+            updateStats();
+        }
+
+        function saveData(key, data) {
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+
+        function applySettingsToUI() {
+            document.getElementById('nav-college-name').innerText = "VCACS";
+            document.getElementById('footer-college-name').innerText = state.settings.collegeName;
+            document.getElementById('copyright-name').innerText = state.settings.collegeName;
+            document.getElementById('footer-location').innerText = state.settings.location;
+            document.getElementById('footer-email').innerText = state.settings.email;
+            document.getElementById('footer-phone').innerText = state.settings.phone;
+
+            // Update admin settings form if open
+            document.getElementById('set-college-name').value = state.settings.collegeName;
+            document.getElementById('set-email').value = state.settings.email;
+            document.getElementById('set-location').value = state.settings.location;
+            document.getElementById('set-phone').value = state.settings.phone;
+            document.getElementById('set-allow-reports').checked = state.settings.allowReports;
+            document.getElementById('set-allow-claims').checked = state.settings.allowClaims;
+        }
+
+        // --- 3. ROUTING LOGIC ---
+        function handleRoute() {
+            const hash = window.location.hash || '#home';
+            const views = document.querySelectorAll('.page-view');
+            
+            // Hide all views
+            views.forEach(view => {
+                view.classList.add('hide');
+                view.classList.remove('fade-in');
+            });
+
+            // Mobile menu close
+            document.getElementById('mobile-menu').classList.add('hidden');
+
+            // Route mapping
+            let targetView = 'view-home';
+            
+            if (hash === '#home') targetView = 'view-home';
+            else if (hash === '#lost') { targetView = 'view-browse'; state.browseType = 'lost'; setupBrowsePage(); }
+            else if (hash === '#found') { targetView = 'view-browse'; state.browseType = 'found'; setupBrowsePage(); }
+            else if (hash === '#report') targetView = 'view-report';
+            else if (hash === '#my-reports') targetView = 'view-my-reports';
+            else if (hash === '#how-it-works') targetView = 'view-how-it-works';
+            else if (hash === '#admin-login') {
+                if (state.isAdmin) { window.location.hash = '#admin-dashboard'; return; }
+                targetView = 'view-admin-login';
+            }
+            else if (hash === '#admin-dashboard') {
+                if (!state.isAdmin) { window.location.hash = '#admin-login'; return; }
+                targetView = 'view-admin-dashboard';
+                setupAdminDashboard();
+            }
+
+            // Show target
+            const el = document.getElementById(targetView);
+            if(el) {
+                el.classList.remove('hide');
+                el.classList.add('fade-in');
+            }
+            window.scrollTo(0, 0);
+
+            // Special case for home stats
+            if(targetView === 'view-home') renderHome();
+            
+            updateNavUI(hash);
+        }
+
+        function updateNavUI(hash) {
+            document.querySelectorAll('.nav-link, .mobile-link').forEach(link => {
+                if(link.id !== 'nav-admin-link') link.classList.remove('text-college-accent');
+            });
+            // Admin link toggle text based on state
+            const adminLink = document.getElementById('nav-admin-link');
+            const mobileAdminLink = document.getElementById('mobile-admin-link');
+            if(state.isAdmin) {
+                adminLink.innerText = "Dashboard"; adminLink.href = "#admin-dashboard";
+                adminLink.classList.replace('text-sky-200', 'bg-college-800');
+                adminLink.classList.replace('border-college-700', 'border-transparent');
+                adminLink.classList.add('text-white');
+                mobileAdminLink.innerText = "Dashboard"; mobileAdminLink.href = "#admin-dashboard";
+            } else {
+                adminLink.innerText = "Admin"; adminLink.href = "#admin-login";
+                adminLink.classList.replace('bg-college-800', 'text-sky-200');
+                adminLink.classList.replace('border-transparent', 'border-college-700');
+                adminLink.classList.remove('text-white');
+                mobileAdminLink.innerText = "Admin Dashboard"; mobileAdminLink.href = "#admin-login";
+            }
+        }
+
+        // --- 4. CORE RENDER FUNCTIONS ---
+
+        function updateStats() {
+            const total = state.reports.length;
+            const lost = state.reports.filter(r => r.type === 'lost').length;
+            const found = state.reports.filter(r => r.type === 'found').length;
+            const returned = state.reports.filter(r => r.status === 'Returned' || r.status === 'Closed').length;
+
+            if(document.getElementById('stat-total')) document.getElementById('stat-total').innerText = total;
+            if(document.getElementById('stat-lost')) document.getElementById('stat-lost').innerText = lost;
+            if(document.getElementById('stat-found')) document.getElementById('stat-found').innerText = found;
+            if(document.getElementById('stat-returned')) document.getElementById('stat-returned').innerText = returned;
+        }
+
+        function createItemCard(item) {
+            const typeColor = item.type === 'lost' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-green-100 text-green-800 border-green-200';
+            const defaultImg = `https://placehold.co/600x400/f1f5f9/64748b?text=No+Image`;
+            const imgSrc = item.image || defaultImg;
+            
+            return `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition flex flex-col group cursor-pointer" onclick="openItemDetails('${item.id}')">
+                    <div class="h-48 overflow-hidden relative border-b border-slate-100">
+                        <!-- Added an onerror tag so it falls back to a placeholder if you view the code locally before you put the a.jpg/b.jpg images in the folder -->
+                        <img src="${imgSrc}" onerror="this.onerror=null; this.src='${defaultImg}';" alt="${item.name}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                        <div class="absolute top-3 right-3 ${typeColor} border px-2 py-1 rounded text-xs font-bold uppercase shadow-sm">${item.type}</div>
+                    </div>
+                    <div class="p-4 flex-grow flex flex-col">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-slate-800 truncate pr-2" title="${item.name}">${item.name}</h3>
+                        </div>
+                        <p class="text-xs text-college-700 font-bold mb-3"><i class="fas fa-tag"></i> ${item.category}</p>
+                        <p class="text-sm text-slate-500 mb-1 truncate"><i class="fas fa-map-marker-alt w-4 text-slate-400"></i> ${item.location}</p>
+                        <p class="text-sm text-slate-500 mb-4"><i class="fas fa-calendar-alt w-4 text-slate-400"></i> ${item.date}</p>
+                        
+                        <div class="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center">
+                            <span class="text-xs font-bold px-2 py-1 rounded bg-slate-100 border border-slate-200 text-slate-600">${item.status}</span>
+                            <span class="text-college-700 text-sm font-bold hover:text-college-900 transition">Details &rarr;</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderHome() {
+            updateStats();
+            const container = document.getElementById('recent-items-container');
+            const recent = [...state.reports].reverse().slice(0, 4);
+            container.innerHTML = recent.map(createItemCard).join('');
+        }
+
+        function setupBrowsePage() {
+            const title = document.getElementById('browse-title');
+            const subtitle = document.getElementById('browse-subtitle');
+            
+            if (state.browseType === 'lost') {
+                title.innerText = "Lost Items";
+                subtitle.innerText = "Browse items that have been reported lost by others.";
+            } else if (state.browseType === 'found') {
+                title.innerText = "Found Items";
+                subtitle.innerText = "Browse items that have been found across the campus.";
+            } else {
+                title.innerText = "All Items";
+                subtitle.innerText = "Browse all reported items.";
+            }
+            
+            filterAndRenderBrowse();
+        }
+
+        function filterAndRenderBrowse() {
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const cat = document.getElementById('category-filter').value;
+            const stat = document.getElementById('status-filter').value;
+            
+            let filtered = state.reports.filter(r => {
+                const matchType = state.browseType === 'all' || r.type === state.browseType;
+                const matchSearch = r.name.toLowerCase().includes(search) || r.desc.toLowerCase().includes(search) || r.location.toLowerCase().includes(search);
+                const matchCat = cat === 'all' || r.category === cat;
+                const matchStat = stat === 'all' || r.status === stat;
+                return matchType && matchSearch && matchCat && matchStat;
+            });
+
+            // sort newest first
+            filtered.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            const container = document.getElementById('browse-results');
+            const empty = document.getElementById('browse-empty');
+            
+            if(filtered.length === 0) {
+                container.innerHTML = '';
+                empty.classList.remove('hidden');
+            } else {
+                empty.classList.add('hidden');
+                container.innerHTML = filtered.map(createItemCard).join('');
+            }
+        }
+
+        document.getElementById('search-input').addEventListener('input', filterAndRenderBrowse);
+        document.getElementById('category-filter').addEventListener('change', filterAndRenderBrowse);
+        document.getElementById('status-filter').addEventListener('change', filterAndRenderBrowse);
+
+        // --- 5. MODALS & INTERACTIONS ---
+        function openItemDetails(id) {
+            const item = state.reports.find(r => r.id === id);
+            if(!item) return;
+
+            document.getElementById('modal-id').innerText = item.id;
+            document.getElementById('modal-title').innerText = item.name;
+            document.getElementById('modal-category').innerText = item.category;
+            document.getElementById('modal-desc').innerText = item.desc;
+            document.getElementById('modal-date').innerText = item.date;
+            document.getElementById('modal-loc').innerText = item.location;
+            
+            const img = document.getElementById('modal-image');
+            img.src = item.image || `https://placehold.co/600x400/f1f5f9/64748b?text=No+Image`;
+            img.onerror = function() { this.src = `https://placehold.co/600x400/f1f5f9/64748b?text=No+Image`; }; // Fallback
+            
+            const typeBadge = document.getElementById('modal-badge');
+            typeBadge.innerText = item.type;
+            typeBadge.className = `px-2 py-1 text-xs font-bold rounded uppercase mr-2 tracking-wider shadow ${item.type === 'lost' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`;
+            
+            document.getElementById('modal-status').innerText = item.status;
+
+            // Claim button logic
+            const claimBtn = document.getElementById('modal-claim-btn');
+            if(item.type === 'found' && state.settings.allowClaims && !['Claimed', 'Returned', 'Closed'].includes(item.status)) {
+                claimBtn.style.display = 'block';
+            } else {
+                claimBtn.style.display = 'none';
+            }
+
+            openModal('details-modal');
+        }
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            const content = document.getElementById(`${modalId}-content`);
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+            document.body.style.overflow = 'hidden'; 
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            const content = document.getElementById(`${modalId}-content`);
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }, 300);
+        }
+
+        function openClaimForm() {
+            closeModal('details-modal');
+            const itemId = document.getElementById('modal-id').innerText;
+            const item = state.reports.find(r => r.id === itemId);
+            
+            document.getElementById('claim-target-id').innerText = item.id;
+            document.getElementById('claim-target-name').innerText = item.name;
+            document.getElementById('claim-report-id').value = item.id;
+            
+            document.getElementById('claim-form').reset();
+            setTimeout(() => openModal('claim-modal'), 350); 
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fas ${type==='success'?'fa-check-circle':type==='error'?'fa-exclamation-circle':'fa-info-circle'} mr-2"></i> ${message}`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'fadeOut 0.3s forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- 6. FORM HANDLERS ---
+        
+        // Image Upload
+        document.getElementById('report-image').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            
+            if(file.size > 2 * 1024 * 1024) {
+                showToast("Image too large. Please select under 2MB.", "error");
+                this.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                state.imageUploadData = event.target.result;
+                document.getElementById('image-preview').src = state.imageUploadData;
+                document.getElementById('image-upload-prompt').classList.add('hidden');
+                document.getElementById('image-preview-container').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('remove-image').addEventListener('click', () => {
+            state.imageUploadData = null;
+            document.getElementById('report-image').value = '';
+            document.getElementById('image-preview').src = '';
+            document.getElementById('image-upload-prompt').classList.remove('hidden');
+            document.getElementById('image-preview-container').classList.add('hidden');
+        });
+
+        // Submit Report
+        document.getElementById('report-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if(!state.settings.allowReports) {
+                showToast("System currently not accepting new reports.", "error");
+                return;
+            }
+
+            const type = document.querySelector('input[name="reportType"]:checked').value;
+            const newId = `LF-${new Date().getFullYear()}-${String(state.reports.length + 1).padStart(3, '0')}`;
+            
+            const newReport = {
+                id: newId,
+                type: type,
+                name: document.getElementById('report-name').value,
+                category: document.getElementById('report-category').value,
+                desc: document.getElementById('report-desc').value,
+                location: document.getElementById('report-location').value,
+                date: document.getElementById('report-date').value,
+                time: document.getElementById('report-time').value,
+                status: 'Under Review',
+                reporterName: document.getElementById('reporter-name').value,
+                reporterId: document.getElementById('reporter-id').value,
+                email: document.getElementById('reporter-email').value,
+                phone: document.getElementById('reporter-phone').value,
+                image: state.imageUploadData
+            };
+
+            state.reports.push(newReport);
+            saveData('lf_reports', state.reports);
+            
+            showToast(`Report submitted successfully! Your ID is ${newId}`, "success");
+            this.reset();
+            document.getElementById('remove-image').click(); 
+            
+            setTimeout(() => {
+                window.location.hash = '#my-reports';
+                document.getElementById('track-id').value = newId;
+                document.getElementById('track-email').value = newReport.email;
+                document.getElementById('track-form').dispatchEvent(new Event('submit'));
+            }, 1500);
+        });
+
+        // Submit Claim
+        document.getElementById('claim-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const reportId = document.getElementById('claim-report-id').value;
+            const claimId = `CLM-${new Date().getFullYear()}-${String(state.claims.length + 1).padStart(3, '0')}`;
+            
+            const newClaim = {
+                id: claimId,
+                reportId: reportId,
+                name: document.getElementById('claim-name').value,
+                studentId: document.getElementById('claim-studentid').value,
+                email: document.getElementById('claim-email').value,
+                phone: document.getElementById('claim-phone').value,
+                proof: document.getElementById('claim-proof').value,
+                date: new Date().toISOString().split('T')[0],
+                status: 'Pending'
+            };
+
+            state.claims.push(newClaim);
+            saveData('lf_claims', state.claims);
+            
+            const reportIndex = state.reports.findIndex(r => r.id === reportId);
+            if(reportIndex > -1) {
+                state.reports[reportIndex].status = 'Claimed (Reviewing)';
+                saveData('lf_reports', state.reports);
+            }
+
+            closeModal('claim-modal');
+            showToast(`Claim submitted! Claim ID: ${claimId}`, "success");
+            this.reset();
+        });
+
+        // Track Report
+        document.getElementById('track-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id = document.getElementById('track-id').value.trim().toUpperCase();
+            const email = document.getElementById('track-email').value.trim().toLowerCase();
+            
+            const report = state.reports.find(r => r.id === id && r.email.toLowerCase() === email);
+            
+            if(report) {
+                document.getElementById('track-result').classList.remove('hidden');
+                document.getElementById('tr-id').innerText = report.id;
+                document.getElementById('tr-item-name').innerText = report.name;
+                document.getElementById('tr-type').innerText = report.type;
+                document.getElementById('tr-category').innerText = report.category;
+                document.getElementById('tr-date').innerText = report.date;
+                document.getElementById('tr-location').innerText = report.location;
+                
+                const badge = document.getElementById('tr-badge');
+                badge.innerText = report.status;
+                if(report.status.includes('Review') || report.status.includes('Pending')) badge.className = 'px-3 py-1 rounded-full text-sm font-bold bg-yellow-100 text-yellow-800 border border-yellow-200';
+                else if(report.status === 'Verified') badge.className = 'px-3 py-1 rounded-full text-sm font-bold bg-orange-100 text-orange-800 border border-orange-200';
+                else if(report.status === 'Returned' || report.status === 'Closed') badge.className = 'px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-800 border border-green-200';
+                else badge.className = 'px-3 py-1 rounded-full text-sm font-bold bg-slate-100 text-slate-800 border border-slate-200';
+
+                const timeline = document.getElementById('tr-timeline');
+                let steps = ['Reported', 'Under Review', 'Verified', 'Returned/Closed'];
+                let currentStepIndex = 0;
+                
+                if(report.status === 'Under Review' || report.status === 'Pending') currentStepIndex = 1;
+                else if(report.status === 'Verified' || report.status.includes('Claimed')) currentStepIndex = 2;
+                else if(report.status === 'Returned' || report.status === 'Closed') currentStepIndex = 3;
+
+                let html = '';
+                steps.forEach((step, idx) => {
+                    let classes = '';
+                    let textClass = 'text-slate-400';
+                    if(idx < currentStepIndex) { classes = 'active'; textClass = 'text-slate-700 font-medium'; }
+                    else if(idx === currentStepIndex) { classes = 'current'; textClass = 'text-college-700 font-bold'; }
+                    
+                    html += `
+                        <div class="timeline-step ${classes}">
+                            <div class="${textClass}">${step}</div>
+                        </div>
+                    `;
+                });
+                timeline.innerHTML = html;
+
+            } else {
+                document.getElementById('track-result').classList.add('hidden');
+                showToast("No report found with matching ID and Email.", "error");
+            }
+        });
+
+        // --- 7. ADMIN SYSTEM ---
+        
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const u = document.getElementById('admin-user').value;
+            const p = document.getElementById('admin-pass').value;
+            
+            if(u === 'admin' && p === 'admin123') {
+                state.isAdmin = true;
+                localStorage.setItem('lf_admin_session', 'true');
+                showToast("Login successful", "success");
+                this.reset();
+                window.location.hash = '#admin-dashboard';
+            } else {
+                showToast("Invalid credentials", "error");
+            }
+        });
+
+        document.getElementById('admin-logout-btn').addEventListener('click', () => {
+            state.isAdmin = false;
+            localStorage.setItem('lf_admin_session', 'false');
+            window.location.hash = '#home';
+            showToast("Logged out successfully", "info");
+        });
+
+        document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.admin-tab-btn').forEach(b => {
+                    b.classList.remove('bg-college-800', 'text-white');
+                    b.classList.add('text-slate-400');
+                });
+                this.classList.remove('text-slate-400');
+                this.classList.add('bg-college-800', 'text-white');
+                
+                document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.add('hide'));
+                
+                const targetId = this.getAttribute('data-target');
+                document.getElementById(targetId).classList.remove('hide');
+            });
+        });
+
+        function setupAdminDashboard() {
+            document.getElementById('ad-stat-total').innerText = state.reports.length;
+            document.getElementById('ad-stat-pending').innerText = state.reports.filter(r => r.status === 'Under Review' || r.status === 'Pending').length;
+            document.getElementById('ad-stat-claims').innerText = state.claims.filter(c => c.status === 'Pending').length;
+            document.getElementById('ad-stat-returned').innerText = state.reports.filter(r => r.status === 'Returned').length;
+            
+            const lostCt = state.reports.filter(r=>r.type==='lost').length;
+            const foundCt = state.reports.filter(r=>r.type==='found').length;
+            const total = lostCt + foundCt || 1; 
+            const lPct = (lostCt/total)*100;
+            const fPct = (foundCt/total)*100;
+            
+            document.getElementById('visual-bar').innerHTML = `
+                <div style="width: ${lPct}%" class="bg-red-500 h-full"></div>
+                <div style="width: ${fPct}%" class="bg-green-500 h-full"></div>
+            `;
+            document.getElementById('visual-labels').innerHTML = `
+                <span><span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-1"></span> Lost (${lostCt})</span>
+                <span><span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span> Found (${foundCt})</span>
+            `;
+
+            renderAdminTables();
+        }
+
+        function renderAdminTables() {
+            const rTbody = document.getElementById('admin-reports-tbody');
+            rTbody.innerHTML = state.reports.map(r => `
+                <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-slate-800">${r.id}</div>
+                        <div class="text-xs text-slate-500">${r.date}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="font-medium text-slate-700">${r.name}</div>
+                        <div class="text-xs text-slate-500">${r.category} | ${r.reporterName}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 text-xs rounded uppercase font-bold border ${r.type==='lost'?'bg-red-50 text-red-700 border-red-200':'bg-green-50 text-green-700 border-green-200'}">${r.type}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <select onchange="updateReportStatus('${r.id}', this.value)" class="text-sm border border-slate-300 rounded px-2 py-1 outline-none focus:border-college-600 bg-white shadow-sm">
+                            <option value="Under Review" ${r.status==='Under Review'?'selected':''}>Under Review</option>
+                            <option value="Verified" ${r.status==='Verified'?'selected':''}>Verified</option>
+                            <option value="Claimed (Reviewing)" ${r.status==='Claimed (Reviewing)'?'selected':''}>Claimed (Reviewing)</option>
+                            <option value="Returned" ${r.status==='Returned'?'selected':''}>Returned</option>
+                            <option value="Closed" ${r.status==='Closed'?'selected':''}>Closed</option>
+                        </select>
+                    </td>
+                    <td class="px-6 py-4 text-right space-x-3">
+                        <button onclick="openItemDetails('${r.id}')" class="text-blue-500 hover:text-blue-700"><i class="fas fa-eye"></i></button>
+                        <button onclick="deleteReport('${r.id}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+
+            const cTbody = document.getElementById('admin-claims-tbody');
+            if(state.claims.length === 0) {
+                cTbody.innerHTML = `<tr><td colspan="5" class="px-6 py-4 text-center text-slate-500">No claims submitted yet.</td></tr>`;
+            } else {
+                cTbody.innerHTML = state.claims.map(c => `
+                    <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                        <td class="px-6 py-4 font-mono text-sm">${c.id}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-college-700">${c.reportId}</td>
+                        <td class="px-6 py-4">
+                            <div class="font-medium text-slate-800">${c.name}</div>
+                            <div class="text-xs text-slate-500">${c.email}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 text-xs rounded font-bold border ${c.status==='Pending'?'bg-yellow-50 text-yellow-800 border-yellow-200':c.status==='Approved'?'bg-green-50 text-green-800 border-green-200':'bg-red-50 text-red-800 border-red-200'}">${c.status}</span>
+                        </td>
+                        <td class="px-6 py-4 text-right space-x-2">
+                            ${c.status === 'Pending' ? `
+                                <button onclick="processClaim('${c.id}', 'Approved')" class="text-green-600 hover:text-white hover:bg-green-600 text-xs border border-green-600 px-3 py-1.5 rounded transition shadow-sm">Approve</button>
+                                <button onclick="processClaim('${c.id}', 'Rejected')" class="text-red-600 hover:text-white hover:bg-red-600 text-xs border border-red-600 px-3 py-1.5 rounded transition shadow-sm">Reject</button>
+                            ` : `<span class="text-xs text-slate-400 font-medium">Processed</span>`}
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        window.updateReportStatus = function(id, newStatus) {
+            const idx = state.reports.findIndex(r => r.id === id);
+            if(idx > -1) {
+                state.reports[idx].status = newStatus;
+                saveData('lf_reports', state.reports);
+                showToast(`Status updated to ${newStatus}`, 'success');
+                setupAdminDashboard(); 
+            }
+        };
+
+        window.deleteReport = function(id) {
+            if(confirm('Are you sure you want to delete this report?')) {
+                state.reports = state.reports.filter(r => r.id !== id);
+                saveData('lf_reports', state.reports);
+                showToast('Report deleted', 'success');
+                renderAdminTables();
+                setupAdminDashboard();
+            }
+        };
+
+        window.processClaim = function(claimId, newStatus) {
+            if(confirm(`Are you sure you want to ${newStatus.toLowerCase()} this claim?`)) {
+                const claimIdx = state.claims.findIndex(c => c.id === claimId);
+                if(claimIdx > -1) {
+                    state.claims[claimIdx].status = newStatus;
+                    saveData('lf_claims', state.claims);
+                    
+                    if(newStatus === 'Approved') {
+                        updateReportStatus(state.claims[claimIdx].reportId, 'Returned');
+                    } else if (newStatus === 'Rejected') {
+                        updateReportStatus(state.claims[claimIdx].reportId, 'Verified'); 
+                    }
+                    
+                    showToast(`Claim ${newStatus}`, 'success');
+                    renderAdminTables();
+                }
+            }
+        };
+
+        window.clearAllData = function() {
+            if(confirm("DANGER! This will delete ALL reports and claims. Restore defaults?")) {
+                localStorage.removeItem('lf_reports');
+                localStorage.removeItem('lf_claims');
+                state.claims = [];
+                initData(); 
+                setupAdminDashboard();
+                showToast("Data reset to defaults", "info");
+            }
+        };
+
+        document.getElementById('settings-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            state.settings = {
+                collegeName: document.getElementById('set-college-name').value,
+                email: document.getElementById('set-email').value,
+                location: document.getElementById('set-location').value,
+                phone: document.getElementById('set-phone').value,
+                allowReports: document.getElementById('set-allow-reports').checked,
+                allowClaims: document.getElementById('set-allow-claims').checked
+            };
+            saveData('lf_settings', state.settings);
+            applySettingsToUI();
+            showToast("Settings saved successfully", "success");
+        });
+
+        // --- 8. UI EVENTS & INIT ---
+
+        document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        });
+
+        window.addEventListener('hashchange', handleRoute);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initData();
+            if(!window.location.hash) {
+                window.location.hash = '#home';
+            } else {
+                handleRoute();
+            }
+        });
+
+    </script>
+</body>
+</html>
